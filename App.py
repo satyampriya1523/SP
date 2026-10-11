@@ -1,6 +1,7 @@
-import numpy as np
+import time
 import pandas as pd
 import plotly.graph_objects as go
+import requests
 import streamlit as st
 import ta
 import yfinance as yf
@@ -12,7 +13,7 @@ st.set_page_config(
     layout='wide',
 )
 
-# Custom CSS for Professional Dark Terminal Look
+# Custom CSS
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
@@ -29,18 +30,16 @@ st.caption(
 # Initialize Session State for Virtual Portfolio Paper Trading
 if 'virtual_cash' not in st.session_state:
   st.session_state.virtual_cash = 100000.0  # ₹1 Lakh Virtual Capital
-  st.session_state.virtual_portfolio = {}  # {Ticker: {'qty': 0, 'buy_price': 0}}
+  st.session_state.virtual_portfolio = {}  # {Ticker: {'qty': 0, 'buy_price': 0, 'current_price': 0}}
   st.session_state.trade_history = []
 
-# Sidebar Tickers & Sandbox Controls
+# Sidebar Controls
 st.sidebar.header('⚙️ Sandbox & Market Controls')
-
 st.sidebar.info(
     '🛡️ **Sandbox Mode Active:** Real market data is used, but trades are'
     ' executed using virtual paper money.'
 )
 
-# Virtual Portfolio Stats in Sidebar
 st.sidebar.divider()
 st.sidebar.subheader('💼 Virtual Portfolio Stats')
 st.sidebar.metric(
@@ -48,7 +47,7 @@ st.sidebar.metric(
 )
 total_portfolio_value = st.session_state.virtual_cash
 for sym, details in st.session_state.virtual_portfolio.items():
-  total_portfolio_value += details['qty'] * details['current_price']
+  total_portfolio_value += details.get('qty', 0) * details.get('current_price', 0)
 st.sidebar.metric('Total Portfolio Value', f"₹{total_portfolio_value:,.2f}")
 
 market_preset = st.sidebar.selectbox(
@@ -61,9 +60,9 @@ market_preset = st.sidebar.selectbox(
 )
 
 if market_preset == 'Nifty 50 Bluechips':
-  default_tickers = 'RELIANCE.NS, TCS.NS, HDFCBANK.NS, INFY.NS, ICICIBANK.NS, ITC.NS, SBIN.NS, BHARTIARTL.NS, HINDUNILVR.NS, LTIM.NS'
+  default_tickers = 'RELIANCE.NS, TCS.NS, HDFCBANK.NS, INFY.NS, ICICIBANK.NS, ITC.NS, SBIN.NS, BHARTIARTL.NS, HINDUNILVR.NS'
 elif market_preset == 'Top IT Giants':
-  default_tickers = 'TCS.NS, INFY.NS, HCLTECH.NS, WIPRO.NS, TECHM.NS, LTIM.NS'
+  default_tickers = 'TCS.NS, INFY.NS, HCLTECH.NS, WIPRO.NS, TECHM.NS'
 elif market_preset == 'Top Banking & Financials':
   default_tickers = (
       'HDFCBANK.NS, ICICIBANK.NS, SBIN.NS, AXISBANK.NS, KOTAKBANK.NS, INDUSINDBK.NS'
@@ -83,8 +82,8 @@ timeframe = st.sidebar.selectbox(
 )
 
 
-# High-Accuracy Quant Engine (88.6% Win Rate)
-@st.cache_data(ttl=3600)
+# High-Accuracy Quant Engine with Rate-Limit & Error Safety
+@st.cache_data(ttl=1800)
 def run_sandbox_quant_engine(ticker_list, period_val):
   terminal_results = []
   strategy_performance = {
@@ -96,17 +95,26 @@ def run_sandbox_quant_engine(ticker_list, period_val):
       },
   }
 
+  session = requests.Session()
+  session.headers.update({
+      'User-Agent': (
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,'
+          ' like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      )
+  })
+
   for t in ticker_list:
     try:
-      stock = yf.Ticker(t)
-      info = stock.info
+      stock = yf.Ticker(t, session=session)
 
       hist = stock.history(period=period_val)
-      if hist.empty or len(hist) < 50:
+      if hist.empty or len(hist) < 30:
         continue
 
-      current_price = hist['Close'].iloc[-1]
-      prev_close = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
+      current_price = float(hist['Close'].iloc[-1])
+      prev_close = (
+          float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price
+      )
       price_change_pct = ((current_price - prev_close) / prev_close) * 100
 
       hist['SMA_50'] = hist['Close'].rolling(window=50).mean()
@@ -114,20 +122,28 @@ def run_sandbox_quant_engine(ticker_list, period_val):
 
       rsi_ind = ta.momentum.RSIIndicator(close=hist['Close'])
       hist['RSI'] = rsi_ind.rsi()
-      current_rsi = hist['RSI'].iloc[-1] if not hist['RSI'].empty else 50
+      current_rsi = (
+          float(hist['RSI'].iloc[-1]) if not hist['RSI'].empty else 50.0
+      )
 
-      pe = info.get('trailingPE', 25) or 25
+      # Fallback defaults for Yahoo API 401 issues
+      try:
+        info = stock.info
+      except Exception:
+        info = {}
+
+      pe = info.get('trailingPE', 25.0) or 25.0
       roe = (info.get('returnOnEquity', 0.15) or 0.15) * 100
       roce = (info.get('returnOnCapitalEmployed', 0.18) or 0.18) * 100
       if roce < 1:
         roce = roce * 100
-      debt_eq = (info.get('debtToEquity', 40) or 40) / 100
-      market_cap = info.get('marketCap', 10000000000) or 10000000000
+      debt_eq = (info.get('debtToEquity', 40.0) or 40.0) / 100
+      market_cap = info.get('marketCap', 100000000000) or 100000000000
       div_yield = (info.get('dividendYield', 0.01) or 0.01) * 100
 
       sma_50_val = (
-          hist['SMA_50'].iloc[-1]
-          if not hist['SMA_50'].empty
+          float(hist['SMA_50'].iloc[-1])
+          if not hist['SMA_50'].empty and not pd.isna(hist['SMA_50'].iloc[-1])
           else current_price
       )
 
@@ -187,6 +203,7 @@ def run_sandbox_quant_engine(ticker_list, period_val):
           'Reason': ', '.join(reason_list),
           'History': hist,
       })
+      time.sleep(0.1)  # Rate limiting safety delay
     except Exception:
       continue
 
@@ -214,7 +231,6 @@ if (
     df = pd.DataFrame(data)
     df_sorted = df.sort_values(by='Score', ascending=False)
 
-    # Strategy Backtest Success Banner
     st.subheader('🧪 Hybrid Algorithm Status (88.6% Win Rate Benchmark)')
     col_s1, col_s2, col_s3 = st.columns(3)
 
@@ -242,7 +258,6 @@ if (
 
     st.divider()
 
-    # Live Notification & Virtual Paper Trading Center
     st.subheader('🔔 Live NSE Signals & Virtual Paper Execution Center')
 
     buy_signals = [d for d in data if 'BUY' in d['Signal Raw']]
@@ -264,26 +279,25 @@ if (
               f" \n*Rationale: {b['Reason']}*"
           )
 
-          # Virtual Paper Trade Buy Button
           if st.button(
               f"🛡️ Paper Buy {b['Ticker']} (Virtual Order)",
               key=f"paper_buy_{b['Ticker']}",
           ):
-            cost = b['Price (₹)'] * 5  # Buying 5 dummy quantities
+            cost = b['Price (₹)'] * 5
             if st.session_state.virtual_cash >= cost:
               st.session_state.virtual_cash -= cost
               st.session_state.virtual_portfolio[b['Ticker']] = {
                   'qty': (
-                      st.session_state.virtual_portfolio.get(b['Ticker'], {}).get(
-                          'qty', 0
-                      )
+                      st.session_state.virtual_portfolio.get(
+                          b['Ticker'], {}
+                      ).get('qty', 0)
                       + 5
                   ),
                   'buy_price': b['Price (₹)'],
                   'current_price': b['Price (₹)'],
               }
               st.session_state.trade_history.append(
-                  f'Bought 5 shares of {b['Ticker']} at ₹{b['Price (₹)']}'
+                  f'Bought 5 shares of {b["Ticker"]} at ₹{b["Price (₹)"]}'
               )
               st.success(
                   f'Successfully placed virtual paper order for 5 shares of'
@@ -304,7 +318,6 @@ if (
               f" \n*Rationale: {s['Reason']}*"
           )
 
-          # Virtual Paper Trade Sell Button
           if st.button(
               f"🛡️ Paper Sell {s['Ticker']} (Virtual Order)",
               key=f"paper_sell_{s['Ticker']}",
@@ -318,10 +331,10 @@ if (
               st.session_state.virtual_cash += revenue
               st.session_state.virtual_portfolio[s['Ticker']]['qty'] = 0
               st.session_state.trade_history.append(
-                  f'Sold {held_qty} shares of {s['Ticker']} at ₹{s['Price (₹)']}'
+                  f'Sold {held_qty} shares of {s["Ticker"]} at ₹{s["Price (₹)"]}'
               )
               st.success(
-                  f'Successfully exited position for {s['Ticker']} via paper'
+                  f'Successfully exited position for {s["Ticker"]} via paper'
                   ' trade!'
               )
               st.rerun()
@@ -335,12 +348,11 @@ if (
 
     st.divider()
 
-    # Virtual Portfolio Holdings Overview
     st.subheader('💼 Your Active Virtual Paper Portfolio')
     if st.session_state.virtual_portfolio:
       port_data = []
       for sym, det in st.session_state.virtual_portfolio.items():
-        if det['qty'] > 0:
+        if det.get('qty', 0) > 0:
           current_val = det['qty'] * det['current_price']
           invested_val = det['qty'] * det['buy_price']
           pnl = current_val - invested_val
@@ -364,7 +376,6 @@ if (
 
     st.divider()
 
-    # Screener Table
     st.subheader('📊 NSE Screener & Quantitative Scorecard')
     st.dataframe(
         df_sorted[[
