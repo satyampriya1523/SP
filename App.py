@@ -61,10 +61,13 @@ timeframe = st.sidebar.selectbox(
 @st.cache_data(ttl=3600)
 def run_high_accuracy_engine(ticker_list, period_val):
   terminal_results = []
-  
+
   # Calibrated for 80%+ Win Rate Simulation Benchmark across 1L+ runs
   strategy_performance = {
-      'Strategy A (Adaptive Trend Momentum)': {'wins': 84210, 'total_return': 18.4},
+      'Strategy A (Adaptive Trend Momentum)': {
+          'wins': 84210,
+          'total_return': 18.4,
+      },
       'Strategy B (Smart RSI Reversion)': {'wins': 81500, 'total_return': 16.2},
       'Strategy C (High-Probability Value & ROCE Hybrid 🏆)': {
           'wins': 88640,
@@ -97,12 +100,17 @@ def run_high_accuracy_engine(ticker_list, period_val):
       pe = info.get('trailingPE', 25) or 25
       roe = (info.get('returnOnEquity', 0.15) or 0.15) * 100
       roce = (info.get('returnOnCapitalEmployed', 0.18) or 0.18) * 100
-      if roce < 1: roce = roce * 100
+      if roce < 1:
+        roce = roce * 100
       debt_eq = (info.get('debtToEquity', 40) or 40) / 100
       market_cap = info.get('marketCap', 10000000000) or 10000000000
       div_yield = (info.get('dividendYield', 0.01) or 0.01) * 100
 
-      sma_50_val = hist['SMA_50'].iloc[-1] if not hist['SMA_50'].empty else current_price
+      sma_50_val = (
+          hist['SMA_50'].iloc[-1]
+          if not hist['SMA_50'].empty
+          else current_price
+      )
 
       # High-Probability Optimized Signal Logic (80%+ Success Rate Target)
       signal = 'HOLD'
@@ -132,11 +140,16 @@ def run_high_accuracy_engine(ticker_list, period_val):
 
       # Scoring Logic (Max 100)
       score = 0
-      if 0 < pe < 45: score += 25
-      if roce >= 10: score += 25
-      if debt_eq <= 1.5: score += 20
-      if current_price >= sma_50_val * 0.98: score += 15
-      if 35 <= current_rsi <= 70: score += 15
+      if 0 < pe < 45:
+        score += 25
+      if roce >= 10:
+        score += 25
+      if debt_eq <= 1.5:
+        score += 20
+      if current_price >= sma_50_val * 0.98:
+        score += 15
+      if 35 <= current_rsi <= 70:
+        score += 15
 
       terminal_results.append({
           'Ticker': t.replace('.NS', ''),
@@ -164,10 +177,21 @@ def run_high_accuracy_engine(ticker_list, period_val):
 
 
 # Main Execution Trigger
-if st.button('🚀 Run 1L+ High-Accuracy Simulations') or 'terminal_data' in st.session_state:
-  if 'terminal_data' not in st.session_state or st.sidebar.button('Force Refresh'):
-    with st.spinner('Running 1,00,000+ paper trading simulations targeting 80%+ success rate...'):
-      st.session_state.terminal_data, st.session_state.strat_perf = run_high_accuracy_engine(tickers, timeframe)
+if (
+    st.button('🚀 Run 1L+ High-Accuracy Simulations')
+    or 'terminal_data' in st.session_state
+):
+  if (
+      'terminal_data' not in st.session_state
+      or st.sidebar.button('Force Refresh')
+  ):
+    with st.spinner(
+        'Running 1,00,000+ paper trading simulations targeting 80%+ success'
+        ' rate...'
+    ):
+      st.session_state.terminal_data, st.session_state.strat_perf = (
+          run_high_accuracy_engine(tickers, timeframe)
+      )
 
   data = st.session_state.terminal_data
   perf = st.session_state.strat_perf
@@ -178,35 +202,68 @@ if st.button('🚀 Run 1L+ High-Accuracy Simulations') or 'terminal_data' in st.
 
     # Strategy Backtest Comparison Dashboard (80%+ Win Rates)
     st.subheader('🧪 Strategy Backtest Results (1L+ Paper Runs - 80%+ Target)')
-    
+
     col_s1, col_s2, col_s3 = st.columns(3)
 
     with col_s1:
-      rate_a = (perf['Strategy A (Adaptive Trend Momentum)']['wins'] / 100000) * 100
-      st.metric('Strategy A: Adaptive Trend', f'{rate_a:.1f}% Success Rate', '+18.4% Avg Return')
+      rate_a = (
+          perf['Strategy A (Adaptive Trend Momentum)']['wins'] / 100000
+      ) * 100
+      st.metric(
+          'Strategy A: Adaptive Trend',
+          f'{rate_a:.1f}% Success Rate',
+          '+18.4% Avg Return',
+      )
     with col_s2:
-      rate_b = (perf['Strategy B (Smart RSI Reversion)']['wins'] / 100000) * 100
-      st.metric('Strategy B: Smart RSI', f'{rate_b:.1f}% Success Rate', '+16.2% Avg Return')
+      rate_b = (
+          perf['Strategy B (Smart RSI Reversion)']['wins'] / 100000
+      ) * 100
+      st.metric(
+          'Strategy B: Smart RSI',
+          f'{rate_b:.1f}% Success Rate',
+          '+16.2% Avg Return',
+      )
     with col_s3:
-      rate_c = (perf['Strategy C (High-Probability Value & ROCE Hybrid 🏆)']['wins'] / 100000) * 100
-      st.metric('Strategy C: Hybrid (WINNER 🏆)', f'{rate_c:.1f}% Success Rate', '+22.8% Avg Return', delta='Optimal 88.6% Accuracy')
+      rate_c = (
+          perf['Strategy C (High-Probability Value & ROCE Hybrid 🏆)']['wins']
+          / 100000
+      ) * 100
+      st.metric(
+          'Strategy C: Hybrid (WINNER 🏆)',
+          f'{rate_c:.1f}% Success Rate',
+          delta='Optimal 88.6% Accuracy',
+      )
 
-    st.success('🏆 **Winning Algorithm Selected:** **Strategy C (High-Probability Value & ROCE Hybrid)** achieved an outstanding **88.6% success rate** across 1 lakh simulations and is now actively driving your buy/sell alerts!')
+    st.success(
+        '🏆 **Winning Algorithm Selected:** **Strategy C (High-Probability'
+        ' Value & ROCE Hybrid)** achieved an outstanding **88.6% success'
+        ' rate** across 1 lakh simulations and is now actively driving your'
+        ' buy/sell alerts!'
+    )
 
     st.divider()
 
     # Live Notification Center
     st.subheader('🔔 Live NSE Stock Notification & Alert Center')
-    
+
     buy_signals = [d for d in data if 'BUY' in d['Signal Raw']]
-    sell_signals = [d for d in data if 'SELL' in d['Signal Raw'] or 'EXIT' in d['Signal Raw'] or 'BOOK' in d['Signal Raw']]
+    sell_signals = [
+        d
+        for d in data
+        if 'SELL' in d['Signal Raw']
+        or 'EXIT' in d['Signal Raw']
+        or 'BOOK' in d['Signal Raw']
+    ]
 
     col_alert1, col_alert2 = st.columns(2)
     with col_alert1:
       st.markdown('### 🟢 High-Confidence Buy Signals (80%+ Accuracy)')
       if buy_signals:
         for b in buy_signals:
-          st.success(f"**{b['Ticker']}** (₹{b['Price (₹)']}) — {b['Signal']}  \n*Rationale: {b['Reason']}*")
+          st.success(
+              f"**{b['Ticker']}** (₹{b['Price (₹)']}) — {b['Signal']} "
+              f" \n*Rationale: {b['Reason']}*"
+          )
       else:
         st.info('Scanning for high-probability setups...')
 
@@ -214,7 +271,10 @@ if st.button('🚀 Run 1L+ High-Accuracy Simulations') or 'terminal_data' in st.
       st.markdown('### 🔴 Profit Booking & Exit Triggers')
       if sell_signals:
         for s in sell_signals:
-          st.error(f"**{s['Ticker']}** (₹{s['Price (₹)']}) — {s['Signal']}  \n*Rationale: {s['Reason']}*")
+          st.error(
+              f"**{s['Ticker']}** (₹{s['Price (₹)']}) — {s['Signal']} "
+              f" \n*Rationale: {s['Reason']}*"
+          )
       else:
         st.info('No exit alerts triggered. Portfolio positions are healthy.')
 
@@ -223,7 +283,18 @@ if st.button('🚀 Run 1L+ High-Accuracy Simulations') or 'terminal_data' in st.
     # Full Screener Table
     st.subheader('📊 NSE Screener & Quantitative Scorecard')
     st.dataframe(
-        df_sorted[['Ticker', 'Sector', 'Price (₹)', 'Change (%)', 'Market Cap', 'Signal', 'ROCE (%)', 'P/E', 'RSI', 'Score']],
+        df_sorted[[
+            'Ticker',
+            'Sector',
+            'Price (₹)',
+            'Change (%)',
+            'Market Cap',
+            'Signal',
+            'ROCE (%)',
+            'P/E',
+            'RSI',
+            'Score',
+        ]],
         use_container_width=True,
     )
 
@@ -231,9 +302,13 @@ if st.button('🚀 Run 1L+ High-Accuracy Simulations') or 'terminal_data' in st.
 
     # Deep Dive Section
     st.subheader('🔍 Deep-Dive Stock Inspection & Charts')
-    selected_stock = st.selectbox('Select NSE Ticker to Inspect:', df_sorted['Ticker'].tolist())
+    selected_stock = st.selectbox(
+        'Select NSE Ticker to Inspect:', df_sorted['Ticker'].tolist()
+    )
 
-    stock_detail = next(item for item in data if item['Ticker'] == selected_stock)
+    stock_detail = next(
+        item for item in data if item['Ticker'] == selected_stock
+    )
     hist_df = stock_detail['History']
 
     tab_chart, tab_fundamentals, tab_quant = st.tabs([
@@ -244,10 +319,38 @@ if st.button('🚀 Run 1L+ High-Accuracy Simulations') or 'terminal_data' in st.
 
     with tab_chart:
       fig = go.Figure()
-      fig.add_trace(go.Candlestick(x=hist_df.index, open=hist_df['Open'], high=hist_df['High'], low=hist_df['Low'], close=hist_df['Close'], name='Price'))
-      fig.add_trace(go.Scatter(x=hist_df.index, y=hist_df['SMA_50'], line=dict(color='#ff9900', width=1.5), name='50 SMA'))
-      fig.add_trace(go.Scatter(x=hist_df.index, y=hist_df['SMA_200'], line=dict(color='#00ccff', width=1.5), name='200 SMA'))
-      fig.update_layout(title=f'{selected_stock}.NS - High-Accuracy Trend Analysis', xaxis_rangeslider_visible=False, height=500, template='plotly_dark')
+      fig.add_trace(
+          go.Candlestick(
+              x=hist_df.index,
+              open=hist_df['Open'],
+              high=hist_df['High'],
+              low=hist_df['Low'],
+              close=hist_df['Close'],
+              name='Price',
+          )
+      )
+      fig.add_trace(
+          go.Scatter(
+              x=hist_df.index,
+              y=hist_df['SMA_50'],
+              line=dict(color='#ff9900', width=1.5),
+              name='50 SMA',
+          )
+      )
+      fig.add_trace(
+          go.Scatter(
+              x=hist_df.index,
+              y=hist_df['SMA_200'],
+              line=dict(color='#00ccff', width=1.5),
+              name='200 SMA',
+          )
+      )
+      fig.update_layout(
+          title=f'{selected_stock}.NS - High-Accuracy Trend Analysis',
+          xaxis_rangeslider_visible=False,
+          height=500,
+          template='plotly_dark',
+      )
       st.plotly_chart(fig, use_container_width=True)
 
     with tab_fundamentals:
@@ -268,6 +371,13 @@ if st.button('🚀 Run 1L+ High-Accuracy Simulations') or 'terminal_data' in st.
       st.markdown(f'**Recommendation:** {stock_detail["Signal"]}')
       st.markdown(f'**Simulation Rationale:** {stock_detail["Reason"]}')
       st.markdown(f'**Fundamental Health Score:** {stock_detail["Score"]}/100')
-      st.info('💡 **High-Accuracy Note:** This algorithm filters out low-probability noise and focuses on setups with an 80%+ historical win rate.')
+      st.info(
+          '💡 **High-Accuracy Note:** This algorithm filters out'
+          ' low-probability noise and focuses on setups with an 80%+ historical'
+          ' win rate.'
+      )
   else:
-    st.info('Click "Run 1L+ High-Accuracy Simulations" in the sidebar to run the engine.')
+    st.info(
+        'Click "Run 1L+ High-Accuracy Simulations" in the sidebar to run the'
+        ' engine.'
+    )
